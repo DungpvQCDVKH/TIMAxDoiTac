@@ -9,7 +9,6 @@
 #   - HĐ Roll    : tập B00 trên có DPD_CURRENT > 0 (chưa xử lý được trong tháng)
 #   - Roll_EOM   : SUM(POS_CURRENT) * 1e6 của các HĐ Roll (dư nợ gốc cuối kỳ)
 #   - % Roll EOM : Roll_EOM / POS_BOM
-import io
 from pathlib import Path
 
 import pandas as pd
@@ -117,49 +116,15 @@ def present(detail):
     return out.sort_values("POS_BOM", ascending=False).reset_index(drop=True)
 
 
-def build_excel(det, cur, mm):
-    """Excel: Report + Chi tiết (giống Sheet1 trong file mẫu)."""
-    bio = io.BytesIO()
-    with pd.ExcelWriter(bio, engine="xlsxwriter", date_format="yyyy-mm-dd") as xw:
-        wb = xw.book
-        ws = wb.add_worksheet("Report")
-        xw.sheets["Report"] = ws
-        h = wb.add_format({"bold": True, "bg_color": "#B8860B", "font_color": "#FFFFFF", "border": 1, "align": "center"})
-        num = wb.add_format({"num_format": "#,##0", "border": 1})
-        pct = wb.add_format({"num_format": "0.00%", "border": 1, "bold": True})
-        txt = wb.add_format({"border": 1})
-        ws.set_column("A:A", 14)
-        ws.set_column("B:D", 20)
-        ws.write_row("A2", ["Agency", "POS_BOM", "Roll_EOM", "%_Roll_EOM"], h)
-        ws.write("A3", "CIMB", txt)
-        ws.write_number("B3", cur["pos"], num)
-        ws.write_number("C3", cur["roll"], num)
-        ws.write_formula("D3", "=IFERROR(C3/B3,0)", pct, cur["roll"] / cur["pos"] if cur["pos"] else 0)
-        ws.write("A5", "Trong đó:")
-        ws.write("A6", f"- POS BOM: Dư nợ gốc các HĐ có ngày thanh toán trong tháng {mm:02d} chốt tại ngày đầu tháng {mm:02d}")
-        ws.write("A7", f"- Roll EOM: Dư nợ gốc các HĐ không thanh toán trong tháng {mm:02d}, bị chuyển nợ quá hạn")
-        ws.write("A8", f"- % Roll EOM: Tỉ lệ nợ gốc bị chuyển nhóm quá hạn từ B00 lên B01 chốt tại ngày cuối cùng của tháng {mm:02d}")
-
-        det.to_excel(xw, sheet_name="Chi tiết", index=False)
-        s1 = xw.sheets["Chi tiết"]
-        s1.set_column(0, len(det.columns) - 1, 18)
-        s1.set_column("B:B", 30)
-        for i, c in enumerate(det.columns):
-            if c == "Tên KH":
-                s1.set_column(i, i, 28)
-            if c == STATUS_COL:
-                s1.set_column(i, i, 40)
-        s1.freeze_panes(1, 0)
-        s1.autofilter(0, 0, max(len(det), 1), len(det.columns) - 1)
-    return bio.getvalue()
-
-
 # ───────────────────────────── CSS ─────────────────────────────
 st.markdown(f"""
 <style>
 .stApp {{ background:#f1f4f4; }}
 .block-container {{ max-width:1400px; padding-top:1.2rem; padding-bottom:3rem; }}
 header[data-testid="stHeader"] {{ background:transparent; }}
+#MainMenu, footer, .stDeployButton, [data-testid="stToolbar"], [data-testid="stDecoration"],
+[data-testid="stStatusWidget"], [data-testid="stElementToolbar"], [data-testid="stDownloadButton"],
+[data-testid="stToolbarActions"], [data-testid="stAppDeployButton"] {{ display:none !important; visibility:hidden !important; }}
 section[data-testid="stSidebar"] {{ background:#fffdf7; }}
 .sb-t {{ font-weight:800; font-size:13px; letter-spacing:1px; color:#6b5a3a; margin:6px 0 4px; }}
 .hdr {{ position:relative; background:linear-gradient(100deg,#7c6840 0%,#a58d58 55%,#bda568 100%); border-radius:12px;
@@ -373,7 +338,3 @@ else:
                                 "POS_EOM": st.column_config.NumberColumn(format="%.3f"),
                                 "Roll_POS": st.column_config.NumberColumn(format="%.3f"),
                                 "LoanID": st.column_config.NumberColumn(format="%d")})
-    st.download_button("⬇️ Tải Excel (Report + Chi tiết)", data=build_excel(det, cur, sel_m),
-                       file_name=f"TIMA_CIMB_BaoCao_CSKH_{sel_y}{sel_m:02d}.xlsx",
-                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    st.caption("Cột «Tình trạng chăm sóc cuối cùng» để trống trong file tải về để nhập lịch sử tác nghiệp.")

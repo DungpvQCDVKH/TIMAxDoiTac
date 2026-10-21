@@ -7,3 +7,10 @@ font = "sans serif"
 
 [server]
 headless = true
+
+[client]
+toolbarMode = "viewer"
+showErrorDetails = "none"
+
+[browser]
+gatherUsageStats = false
