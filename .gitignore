@@ -1,0 +1,4 @@
+sql_config.json
+.streamlit/secrets.toml
+__pycache__/
+*.pyc
