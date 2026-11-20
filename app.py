@@ -15,7 +15,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-st.set_page_config(page_title="Báo cáo CSKH TIMA-CIMB", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Báo cáo CSKH TIMA-Đối tác", page_icon="📊", layout="wide")
 
 # ── Nguồn dữ liệu: file CSV trong thư mục data/ (do export_data.py chạy nội bộ tạo ra) ──
 DATA_DIR = Path(__file__).parent / "data"
@@ -102,7 +102,6 @@ def present(detail):
         "Date": pd.to_datetime(detail["BUSINESS_DATE"], errors="coerce").dt.date,
         "Mã hợp đồng (Partner user ID)": detail["MA_TC"].astype(str),
         "LoanID": detail["LOAN_ID"],
-        **({"Tên KH": detail["Tên KH"].fillna("").astype(str).str.strip()} if "Tên KH" in detail.columns else {}),
         "Ngày giải ngân": dt(detail["Fromdate"]),
         "Ngày đến hạn": dt(detail["Nextdate"]),
         "Số ngày trễ hạn": detail["DPD_CURRENT"],
@@ -254,7 +253,7 @@ py_, pm_ = shift_month(sel_y, sel_m, -1)
 rc = mt[mt.ym == ym]
 rp = mt[mt.ym == py_ * 100 + pm_]
 if rc.empty:
-    st.info(f"Chưa có dữ liệu B00 CIMB cho tháng {sel_m:02d}/{sel_y}.")
+    st.info(f"Chưa có dữ liệu B00 Đối tác cho tháng {sel_m:02d}/{sel_y}.")
     st.stop()
 cur = rc.iloc[0].to_dict()
 prev = rp.iloc[0].to_dict() if not rp.empty else None
@@ -266,13 +265,13 @@ def pv(k):
 
 
 st.markdown(f"""<div class="hdr"><div><div class="eb">KHỐI DỊCH VỤ KHÁCH HÀNG · TIMA</div>
-<h1>BÁO CÁO KẾT QUẢ CHĂM SÓC KHÁCH HÀNG TIMA-CIMB</h1>
+<h1>BÁO CÁO KẾT QUẢ CHĂM SÓC KHÁCH HÀNG TIMA-ĐỐI TÁC</h1>
 <div class="sub">Dư nợ gốc B00 · Roll EOM · % Roll · Danh sách KH roll · So sánh nhiều tháng</div></div>
 <div class="pill">Tháng {sel_m:02d}/{sel_y} · {vn(len(det))} HĐ roll{(" · cập nhật " + last_update()) if last_update() else ""}</div>
 <div class="by">{AUTHOR}</div></div>""", unsafe_allow_html=True)
 
 # ───────────────────────────── 1. Tổng quan ─────────────────────────────
-sec_head(1, "TỔNG QUAN", f"CIMB · B00 chốt BOM tháng {sel_m:02d}/{sel_y}")
+sec_head(1, "TỔNG QUAN", f"Đối tác · B00 chốt BOM tháng {sel_m:02d}/{sel_y}")
 pct_f = lambda v: vn(v * 100, 2) + "%"  # noqa
 cards = [
     kpi_card("DƯ NỢ GỐC POS BOM", cur["pos"], pv("pos"), ty, "rel", neutral=True),
@@ -283,7 +282,7 @@ cards = [
 ]
 st.markdown('<div class="kpis">' + "".join(cards) + "</div>", unsafe_allow_html=True)
 st.markdown(f"""<table class="rpt"><tr><th>Agency</th><th>POS_BOM</th><th>Roll_EOM</th><th>%_Roll_EOM</th></tr>
-<tr><td>CIMB</td><td>{vn(cur['pos'])}</td><td>{vn(cur['roll'])}</td><td class="hl">{pct_f(cur['pct'])}</td></tr></table>
+<tr><td>Đối tác</td><td>{vn(cur['pos'])}</td><td>{vn(cur['roll'])}</td><td class="hl">{pct_f(cur['pct'])}</td></tr></table>
 <div class="note"><b>Trong đó:</b><br>
 - <b>POS BOM</b>: Dư nợ gốc các HĐ có ngày thanh toán trong tháng {sel_m:02d} chốt tại ngày đầu tháng {sel_m:02d}<br>
 - <b>Roll EOM</b>: Dư nợ gốc các HĐ không thanh toán trong tháng {sel_m:02d}, bị chuyển nợ quá hạn<br>
@@ -325,12 +324,11 @@ sec_head(3, "DANH SÁCH KH ROLL TRONG THÁNG",
 if det.empty:
     st.success("Không có HĐ nào roll trong tháng này.")
 else:
-    q = st.text_input("Tìm mã HĐ / LoanID / tên KH", "", placeholder="Nhập mã hợp đồng hoặc LoanID")
+    q = st.text_input("Tìm mã HĐ / LoanID", "", placeholder="Nhập mã hợp đồng hoặc LoanID")
     v = det
     if q.strip():
         v = det[det["Mã hợp đồng (Partner user ID)"].str.contains(q.strip(), case=False, na=False)
-                | det["LoanID"].astype(str).str.contains(q.strip(), na=False)
-                | (det["Tên KH"].str.contains(q.strip(), case=False, na=False) if "Tên KH" in det.columns else False)]
+                | det["LoanID"].astype(str).str.contains(q.strip(), na=False)]
     st.caption(f"{vn(len(v))} HĐ · dư nợ gốc roll {ty(v['Roll_POS'].sum() * 1e6)} · POS tính theo triệu đồng")
     st.dataframe(v, hide_index=True, width="stretch", height=420,
                  column_order=[c for c in v.columns if c != STATUS_COL],
